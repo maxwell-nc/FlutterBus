@@ -13,6 +13,12 @@ class EventBus {
   final Map _sEventMap = new Map<String, List>();
 
   ///注册接收事件
+  ///[target] 注册的对象，此方法接收一次后自动解除注册，无需手动解除
+  static void registerOnce<T>(Object target, SubscriberCall<T> call) {
+    _instance.registerInternal<T>(target, call, true);
+  }
+
+  ///注册接收事件
   ///[target] 注册的对象，需要调用unRegister方法解除注册
   static void register<T>(Object target, SubscriberCall<T> call) {
     _instance.registerInternal<T>(target, call);
@@ -44,7 +50,8 @@ class EventBus {
     _instance.removeStickyAllInternal(type);
   }
 
-  void registerInternal<T>(Object target, SubscriberCall<T> call) {
+  /// [isAutoUnregister] 接收一次后自动解除注册
+  void registerInternal<T>(Object target, SubscriberCall<T> call, [isAutoUnregister = false]) {
     if (target == null || call == null) {
       return;
     }
@@ -60,21 +67,11 @@ class EventBus {
       call(iterator.current);//触发粘性事件
     }
 
-    _subList.add(new Subscriber(target, tag, call));
+    _subList.add(new Subscriber(target, tag, call, isAutoUnregister));
   }
 
   void unRegisterInternal(Object target) {
-    var iterator;
-    if (_subList != null) {
-      iterator = _subList.iterator;
-    }
-    while (iterator != null && iterator.moveNext()) {
-      dynamic sb = iterator.current; //执行回调
-      //匹配Owner
-      if (sb.owner == target) {
-        _subList.remove(sb);
-      }
-    }
+    _subList.removeWhere((sb) => sb.owner == target);
   }
 
   void postInternal(event, bool sticky) {
@@ -96,14 +93,16 @@ class EventBus {
         sb.call(event);
       }
     }
+
+    // 自动解除注册
+    _subList.removeWhere((sb) => sb.tag == tName && sb.isAutoUnregister);
+
   }
 
   void removeStickyInternal(event) {
     String eventName = event.runtimeType.toString();
     List eventList = _sEventMap[eventName];
-    if (eventList != null && eventList.contains(event)) {
-      eventList.remove(event);
-    }
+    eventList?.removeWhere((element) => element == event);
   }
 
   void removeStickyAllInternal(Type type) {
@@ -122,7 +121,11 @@ class Subscriber<T> {
   ///事件回调
   SubscriberCall<T> call;
 
-  Subscriber(this.owner, this.tag, this.call);
+  /// 是否自动解除注册
+  /// 如果true，则订阅回调一次后自动解除注册
+  bool isAutoUnregister;
+
+  Subscriber(this.owner, this.tag, this.call, this.isAutoUnregister);
 }
 
 ///订阅者方法
