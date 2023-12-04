@@ -1,3 +1,26 @@
+/// 消息总线
+///
+/// 使用指南：
+///
+/// 第一步：定义事件类型
+/// class MyEvent{}
+///
+/// 第二步：注册事件订阅者（推荐放在initState方法中）
+/// EventBus.register(this,test);
+///
+/// void test(MyEvent e){
+///   print(e);
+/// }
+///
+/// 第三步：发送事件
+/// EventBus.post(MyEvent());
+///
+/// 第四步：不要忘记取消订阅（推荐放在dispose方法中）
+/// EventBus.unRegister(this);
+///
+/// 关于Sticky事件：
+/// 可以使用postSticky/removeSticky方法实现
+///
 class EventBus {
   static final EventBus _instance = new EventBus._internal();
 
@@ -6,11 +29,11 @@ class EventBus {
   factory EventBus() => _instance;
 
   ///存放订阅者
-  final List _subList = new List<Subscriber>();
+  final List _subList = <Subscriber>[];
 
   ///存放粘性事件
   ///key:粘性事件的类型
-  final Map _sEventMap = new Map<String, List>();
+  final Map _sEventMap = <String, List>{};
 
   ///注册接收事件
   ///[target] 注册的对象，此方法接收一次后自动解除注册，无需手动解除
@@ -52,22 +75,17 @@ class EventBus {
 
   /// [isAutoUnregister] 接收一次后自动解除注册
   void registerInternal<T>(Object target, SubscriberCall<T> call, [isAutoUnregister = false]) {
-    if (target == null || call == null) {
-      return;
-    }
-
     //检查是否为粘性事件
     String tag = T.toString();
-    List eventList = _sEventMap[tag];
-    var iterator;
+    List? eventList = _sEventMap[tag];
     if (eventList != null) {
-      iterator = eventList.iterator;
-    }
-    while (iterator != null && iterator.moveNext()) {
-      call(iterator.current);//触发粘性事件
+      Iterator iterator = eventList.iterator;
+      while (iterator.moveNext()) {
+        call(iterator.current); //触发粘性事件
+      }
     }
 
-    _subList.add(new Subscriber(target, tag, call, isAutoUnregister));
+    _subList.add(Subscriber(target, tag, call, isAutoUnregister));
   }
 
   void unRegisterInternal(Object target) {
@@ -78,15 +96,12 @@ class EventBus {
     String tName = event.runtimeType.toString();
     if (sticky) {
       //添加粘性事件
-      _sEventMap[tName] ??= new List();
+      _sEventMap[tName] ??= [];
       _sEventMap[tName].add(event);
     }
 
-    var iterator;
-    if (_subList != null) {
-      iterator = _subList.iterator;
-    }
-    while (iterator != null && iterator.moveNext()) {
+    Iterator iterator = _subList.iterator;
+    while (iterator.moveNext()) {
       dynamic sb = iterator.current; //执行回调
       //匹配Tag
       if (sb.tag == tName) {
@@ -101,7 +116,7 @@ class EventBus {
 
   void removeStickyInternal(event) {
     String eventName = event.runtimeType.toString();
-    List eventList = _sEventMap[eventName];
+    List? eventList = _sEventMap[eventName];
     eventList?.removeWhere((element) => element == event);
   }
 
@@ -130,4 +145,4 @@ class Subscriber<T> {
 
 ///订阅者方法
 ///[T] 订阅的事件类型
-typedef void SubscriberCall<T>(T arg);
+typedef SubscriberCall<T> = void Function(T arg);

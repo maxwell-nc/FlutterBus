@@ -1,6 +1,10 @@
 # FlutterBus
 A Flutter (Dart) event bus which support post sticky event.
 
+Support Null-Safety and Flutter 3.
+
+
+
 # Usage
 
 First of all, define event:
@@ -24,7 +28,7 @@ void onEvent(TestEvent e){
 emit event anywhere:
 
 ```dart
-EventBus.post(new TestEvent());
+EventBus.post(TestEvent());
 ```
 
 unregister（Usually put in dispose method）
@@ -37,7 +41,7 @@ EventBus.unRegister(this);
 
 ```dart
 // use postSticky will be sticky event
-EventBus.postSticky(new TestEvent());
+EventBus.postSticky(TestEvent());
 
 // remove one
 EventBus.removeSticky(eventObj);
